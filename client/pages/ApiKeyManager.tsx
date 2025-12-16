@@ -327,10 +327,16 @@ export default function ApiKeyManager() {
       // Save as compact JSON (no pretty-printing) to stay under 400KB limit
       const dataToSave = JSON.stringify(keys);
       const sizeInKB = new Blob([dataToSave]).size / 1024;
-      console.log("[KV Save] Attempting to save", keys.length, "keys (~" + sizeInKB.toFixed(2) + " KB)");
+      console.log(
+        "[KV Save] Attempting to save",
+        keys.length,
+        "keys (~" + sizeInKB.toFixed(2) + " KB)",
+      );
 
       if (sizeInKB > 400) {
-        throw new Error(`Data too large for KV store: ${sizeInKB.toFixed(2)} KB (max 400 KB)`);
+        throw new Error(
+          `Data too large for KV store: ${sizeInKB.toFixed(2)} KB (max 400 KB)`,
+        );
       }
 
       const result = await puter.kv.set("api_keys", dataToSave);
@@ -394,7 +400,11 @@ export default function ApiKeyManager() {
       if (typeof data === "string") {
         try {
           fetchedKeys = JSON.parse(data);
-          console.log("[KV Fetch] Parsed keys from string:", fetchedKeys.length, "keys");
+          console.log(
+            "[KV Fetch] Parsed keys from string:",
+            fetchedKeys.length,
+            "keys",
+          );
         } catch (parseErr) {
           console.error("[KV Fetch] Error parsing KV data:", data);
           throw new Error(
@@ -403,12 +413,20 @@ export default function ApiKeyManager() {
         }
       } else if (Array.isArray(data)) {
         fetchedKeys = data;
-        console.log("[KV Fetch] Retrieved keys directly as array:", fetchedKeys.length, "keys");
+        console.log(
+          "[KV Fetch] Retrieved keys directly as array:",
+          fetchedKeys.length,
+          "keys",
+        );
       } else if (typeof data === "object" && data !== null) {
         // Maybe Puter returned an object that needs to be converted
         try {
           fetchedKeys = JSON.parse(JSON.stringify(data));
-          console.log("[KV Fetch] Converted object to array:", fetchedKeys.length, "keys");
+          console.log(
+            "[KV Fetch] Converted object to array:",
+            fetchedKeys.length,
+            "keys",
+          );
         } catch (err) {
           console.error("[KV Fetch] Cannot convert object:", data);
           throw new Error(
@@ -416,7 +434,11 @@ export default function ApiKeyManager() {
           );
         }
       } else {
-        console.error("[KV Fetch] Unexpected data type from KV:", typeof data, data);
+        console.error(
+          "[KV Fetch] Unexpected data type from KV:",
+          typeof data,
+          data,
+        );
         throw new Error(
           "Invalid data format in KV Store. Expected array or JSON string.",
         );
@@ -453,13 +475,21 @@ export default function ApiKeyManager() {
       console.log("[KV Fetch] Adding", newKeysToAdd.length, "new keys");
 
       const addPromises = newKeysToAdd.map((keyToAdd) =>
-        addKey(keyToAdd.label, keyToAdd.username, keyToAdd.key)
+        addKey(keyToAdd.label, keyToAdd.username, keyToAdd.key),
       );
 
       const results = await Promise.allSettled(addPromises);
-      const addedCount = results.filter((r) => r.status === "fulfilled" && r.value === true).length;
+      const addedCount = results.filter(
+        (r) => r.status === "fulfilled" && r.value === true,
+      ).length;
 
-      console.log("[KV Fetch] Successfully added", addedCount, "out of", newKeysToAdd.length, "keys");
+      console.log(
+        "[KV Fetch] Successfully added",
+        addedCount,
+        "out of",
+        newKeysToAdd.length,
+        "keys",
+      );
 
       if (addedCount > 0) {
         setFetchFromKvMessage({
@@ -469,7 +499,9 @@ export default function ApiKeyManager() {
         toast.success(`Fetched ${addedCount} keys from KV Store`);
         await fetchKvKeyCount();
       } else {
-        throw new Error(`Failed to add keys from KV Store (0/${newKeysToAdd.length} succeeded)`);
+        throw new Error(
+          `Failed to add keys from KV Store (0/${newKeysToAdd.length} succeeded)`,
+        );
       }
     } catch (err) {
       const errorMsg = (err as Error).message;
