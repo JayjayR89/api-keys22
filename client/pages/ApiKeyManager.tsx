@@ -83,6 +83,7 @@ export default function ApiKeyManager() {
   const [usernameFilterOpen, setUsernameFilterOpen] = useState(false);
   const [providerFilter, setProviderFilter] = useState("");
   const [usernameFilter, setUsernameFilter] = useState("");
+  const [kvKeyCount, setKvKeyCount] = useState<number | null>(null);
 
   // Check Puter auth status on mount
   useEffect(() => {
@@ -99,6 +100,58 @@ export default function ApiKeyManager() {
     };
     checkPuterAuth();
   }, []);
+
+  // Fetch KV key count - shows number of API keys stored in KV
+  const fetchKvKeyCount = async () => {
+    try {
+      const puter = (window as any).puter;
+      if (!puter || !puter.kv) {
+        console.log("[KV Count] Puter KV not available");
+        setKvKeyCount(null);
+        return;
+      }
+
+      if (!puterUser) {
+        console.log("[KV Count] No Puter user authenticated");
+        setKvKeyCount(null);
+        return;
+      }
+
+      console.log("[KV Count] Fetching API keys from KV store");
+      const data = await puter.kv.get("api_keys");
+      console.log("[KV Count] KV get result:", data);
+
+      if (!data) {
+        setKvKeyCount(0);
+        return;
+      }
+
+      let count = 0;
+      try {
+        if (typeof data === "string") {
+          const parsed = JSON.parse(data);
+          count = Array.isArray(parsed) ? parsed.length : 0;
+        } else if (Array.isArray(data)) {
+          count = data.length;
+        }
+        console.log("[KV Count] Found", count, "API keys in KV store");
+        setKvKeyCount(count);
+      } catch (err) {
+        console.error("[KV Count] Error parsing KV data:", err);
+        setKvKeyCount(null);
+      }
+    } catch (err) {
+      console.error("[KV Count] Error fetching KV data:", err);
+      setKvKeyCount(null);
+    }
+  };
+
+  // Fetch KV key count when settings modal opens or user changes
+  useEffect(() => {
+    if (showSettingsModal && puterUser) {
+      fetchKvKeyCount();
+    }
+  }, [showSettingsModal, puterUser]);
 
   const handlePuterSignIn = async () => {
     try {
@@ -271,16 +324,37 @@ export default function ApiKeyManager() {
         );
       }
 
-      const dataToSave = JSON.stringify(keys, null, 2);
-      await puter.kv.set("api_keys", dataToSave);
+      // Save as compact JSON (no pretty-printing) to stay under 400KB limit
+      const dataToSave = JSON.stringify(keys);
+      const sizeInKB = new Blob([dataToSave]).size / 1024;
+      console.log(
+        "[KV Save] Attempting to save",
+        keys.length,
+        "keys (~" + sizeInKB.toFixed(2) + " KB)",
+      );
+
+      if (sizeInKB > 400) {
+        throw new Error(
+          `Data too large for KV store: ${sizeInKB.toFixed(2)} KB (max 400 KB)`,
+        );
+      }
+
+      const result = await puter.kv.set("api_keys", dataToSave);
+      console.log("[KV Save] Set result:", result);
+
+      if (!result) {
+        throw new Error("Failed to save to KV store (returned false)");
+      }
 
       setSaveToKvMessage({
         type: "success",
         text: `Successfully saved ${keys.length} API keys to Puter KV Store`,
       });
       toast.success("Keys saved to Puter KV Store");
+      await fetchKvKeyCount();
     } catch (err) {
       const errorMsg = (err as Error).message;
+      console.error("[KV Save] Error:", errorMsg);
       setSaveToKvMessage({
         type: "error",
         text: `Failed to save to KV: ${errorMsg}`,
@@ -310,7 +384,10 @@ export default function ApiKeyManager() {
         );
       }
 
+      console.log("[KV Fetch] Attempting to fetch keys from KV store");
       const data = await puter.kv.get("api_keys");
+      console.log("[KV Fetch] Get result:", data, "type:", typeof data);
+
       if (!data) {
         throw new Error(
           "No saved keys found in Puter KV Store. Try saving your keys first.",
@@ -318,12 +395,52 @@ export default function ApiKeyManager() {
       }
 
       let fetchedKeys: ApiKey[] = [];
-      try {
-        fetchedKeys = JSON.parse(data);
-      } catch (parseErr) {
-        console.error("Error parsing KV data:", data);
+
+      // Handle both direct array and JSON string formats
+      if (typeof data === "string") {
+        try {
+          fetchedKeys = JSON.parse(data);
+          console.log(
+            "[KV Fetch] Parsed keys from string:",
+            fetchedKeys.length,
+            "keys",
+          );
+        } catch (parseErr) {
+          console.error("[KV Fetch] Error parsing KV data:", data);
+          throw new Error(
+            "Invalid JSON format in KV Store. Data may be corrupted.",
+          );
+        }
+      } else if (Array.isArray(data)) {
+        fetchedKeys = data;
+        console.log(
+          "[KV Fetch] Retrieved keys directly as array:",
+          fetchedKeys.length,
+          "keys",
+        );
+      } else if (typeof data === "object" && data !== null) {
+        // Maybe Puter returned an object that needs to be converted
+        try {
+          fetchedKeys = JSON.parse(JSON.stringify(data));
+          console.log(
+            "[KV Fetch] Converted object to array:",
+            fetchedKeys.length,
+            "keys",
+          );
+        } catch (err) {
+          console.error("[KV Fetch] Cannot convert object:", data);
+          throw new Error(
+            "Invalid data format in KV Store. Could not convert to array.",
+          );
+        }
+      } else {
+        console.error(
+          "[KV Fetch] Unexpected data type from KV:",
+          typeof data,
+          data,
+        );
         throw new Error(
-          "Invalid JSON format in KV Store. Data may be corrupted.",
+          "Invalid data format in KV Store. Expected array or JSON string.",
         );
       }
 
@@ -354,18 +471,25 @@ export default function ApiKeyManager() {
         return;
       }
 
-      // Add each new key
-      let addedCount = 0;
-      for (const keyToAdd of newKeysToAdd) {
-        const success = await addKey(
-          keyToAdd.label,
-          keyToAdd.username,
-          keyToAdd.key,
-        );
-        if (success) {
-          addedCount++;
-        }
-      }
+      // Add all new keys at once instead of one-by-one for better performance
+      console.log("[KV Fetch] Adding", newKeysToAdd.length, "new keys");
+
+      const addPromises = newKeysToAdd.map((keyToAdd) =>
+        addKey(keyToAdd.label, keyToAdd.username, keyToAdd.key),
+      );
+
+      const results = await Promise.allSettled(addPromises);
+      const addedCount = results.filter(
+        (r) => r.status === "fulfilled" && r.value === true,
+      ).length;
+
+      console.log(
+        "[KV Fetch] Successfully added",
+        addedCount,
+        "out of",
+        newKeysToAdd.length,
+        "keys",
+      );
 
       if (addedCount > 0) {
         setFetchFromKvMessage({
@@ -373,11 +497,15 @@ export default function ApiKeyManager() {
           text: `Successfully fetched and added ${addedCount} API key(s) from Puter KV Store`,
         });
         toast.success(`Fetched ${addedCount} keys from KV Store`);
+        await fetchKvKeyCount();
       } else {
-        throw new Error("Failed to add keys from KV Store");
+        throw new Error(
+          `Failed to add keys from KV Store (0/${newKeysToAdd.length} succeeded)`,
+        );
       }
     } catch (err) {
       const errorMsg = (err as Error).message;
+      console.error("[KV Fetch] Error:", errorMsg);
       setFetchFromKvMessage({
         type: "error",
         text: `Failed to fetch from KV: ${errorMsg}`,
@@ -1022,6 +1150,14 @@ export default function ApiKeyManager() {
               )}
 
               <div className="mt-4 pt-4 border-t border-slate-700">
+                <div className="mb-3 p-3 bg-slate-800/50 border border-slate-600 rounded-lg">
+                  <p className="text-xs text-slate-400 mb-1">KV Store Keys</p>
+                  <p className="text-lg font-semibold text-white">
+                    {kvKeyCount === null
+                      ? "Loading..."
+                      : `${kvKeyCount} key${kvKeyCount !== 1 ? "s" : ""}`}
+                  </p>
+                </div>
                 <Button
                   onClick={handleFetchFromKV}
                   disabled={fetchFromKvLoading}
