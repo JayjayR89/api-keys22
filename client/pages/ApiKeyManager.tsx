@@ -358,13 +358,25 @@ export default function ApiKeyManager() {
       }
 
       let fetchedKeys: ApiKey[] = [];
-      try {
-        fetchedKeys = JSON.parse(data);
-        console.log("[KV Fetch] Parsed keys:", fetchedKeys.length, "keys");
-      } catch (parseErr) {
-        console.error("Error parsing KV data:", data);
+
+      // Handle both direct array and JSON string formats
+      if (typeof data === "string") {
+        try {
+          fetchedKeys = JSON.parse(data);
+          console.log("[KV Fetch] Parsed keys from string:", fetchedKeys.length, "keys");
+        } catch (parseErr) {
+          console.error("Error parsing KV data:", data);
+          throw new Error(
+            "Invalid JSON format in KV Store. Data may be corrupted.",
+          );
+        }
+      } else if (Array.isArray(data)) {
+        fetchedKeys = data;
+        console.log("[KV Fetch] Retrieved keys directly:", fetchedKeys.length, "keys");
+      } else {
+        console.error("Unexpected data type from KV:", typeof data, data);
         throw new Error(
-          "Invalid JSON format in KV Store. Data may be corrupted.",
+          "Invalid data format in KV Store. Expected array or JSON string.",
         );
       }
 
