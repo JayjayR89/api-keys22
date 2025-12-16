@@ -653,7 +653,7 @@ export default function ApiKeyManager() {
 
         {/* Import/Export Actions */}
         <div className="mb-8">
-          <div className="flex gap-3 mb-3">
+          <div className="flex justify-center gap-3 mb-3">
             <Button
               onClick={handleExport}
               className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white border-0"
@@ -679,7 +679,7 @@ export default function ApiKeyManager() {
             />
           </div>
 
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 text-center">
             💡 Supports JSON format or text files with PROVIDER=...,
             USERNAME=..., KEY=... format
           </p>
