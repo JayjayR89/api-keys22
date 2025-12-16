@@ -686,7 +686,9 @@ export default function ApiKeyManager() {
             onClick={() => setShowAddForm(!showAddForm)}
             className="w-full px-8 py-4 flex items-center justify-between hover:bg-slate-800/70 transition"
           >
-            <h2 className="text-2xl font-bold text-white mx-auto">Add New API Key</h2>
+            <h2 className="text-2xl font-bold text-white mx-auto">
+              Add New API Key
+            </h2>
             <ChevronDown
               className={`w-6 h-6 text-slate-300 transition-transform ${
                 showAddForm ? "rotate-180" : ""
@@ -1150,7 +1152,9 @@ export default function ApiKeyManager() {
 
               <div className="mt-4 pt-4 border-t border-slate-700">
                 <div className="mb-3 p-3 bg-slate-800/50 border border-slate-600 rounded-lg flex flex-col">
-                  <p className="text-xs text-slate-400 mx-auto mb-1">KV Store Keys</p>
+                  <p className="text-xs text-slate-400 mx-auto mb-1">
+                    KV Store Keys
+                  </p>
                   <p className="text-lg font-semibold text-white mx-auto">
                     {kvKeyCount === null
                       ? "Loading..."
