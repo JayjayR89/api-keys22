@@ -301,9 +301,8 @@ export default function ApiKeyManager() {
         );
       }
 
-      const dataToSave = JSON.stringify(keys, null, 2);
-      console.log("[KV Save] Attempting to save keys:", keys.length, "keys");
-      const result = await puter.kv.set("api_keys", dataToSave);
+      console.log("[KV Save] Attempting to save keys:", keys.length, "keys", keys);
+      const result = await puter.kv.set("api_keys", keys);
       console.log("[KV Save] Set result:", result);
 
       if (!result) {
