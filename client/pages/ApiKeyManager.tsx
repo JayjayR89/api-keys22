@@ -259,7 +259,16 @@ export default function ApiKeyManager() {
     try {
       const puter = (window as any).puter;
       if (!puter || !puter.kv) {
-        throw new Error("Puter KV not available");
+        throw new Error(
+          "Puter KV not available. Please ensure Puter is initialized.",
+        );
+      }
+
+      // Check if user is authenticated
+      if (!puterUser) {
+        throw new Error(
+          "You must be signed in with Puter to save keys. Please sign in first.",
+        );
       }
 
       const dataToSave = JSON.stringify(keys, null, 2);
