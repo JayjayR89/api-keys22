@@ -914,6 +914,28 @@ export default function ApiKeyManager() {
                   {fetchFromKvMessage.text}
                 </div>
               )}
+
+              <div className="mt-6 pt-6 border-t border-slate-700">
+                <h3 className="text-sm font-semibold text-slate-200 mb-3">
+                  Danger Zone
+                </h3>
+                <Button
+                  onClick={() => {
+                    setShowDeleteAllConfirm(true);
+                    setDeleteAllConfirmStep(1);
+                  }}
+                  disabled={keys.length === 0}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete All Keys
+                </Button>
+                {keys.length === 0 && (
+                  <p className="text-xs text-slate-500 mt-2">
+                    No keys to delete.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -924,6 +946,120 @@ export default function ApiKeyManager() {
             >
               Close
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Keys Confirmation Dialog */}
+      <Dialog
+        open={showDeleteAllConfirm}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetDeleteConfirmation();
+          }
+        }}
+      >
+        <DialogContent className="bg-slate-800 border border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {deleteAllConfirmStep === 1
+                ? "Delete All API Keys?"
+                : deleteAllConfirmStep === 2
+                  ? "Are You Sure?"
+                  : "Final Confirmation"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4">
+            {deleteAllConfirmStep === 1 && (
+              <div className="space-y-4">
+                <p className="text-slate-300">
+                  You are about to permanently delete all {keys.length} API key
+                  {keys.length !== 1 ? "s" : ""} from your account.
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-sm text-red-400 font-medium">
+                    ⚠️ This action cannot be undone.
+                  </p>
+                </div>
+                <p className="text-slate-400 text-sm">
+                  Click "Continue" if you want to proceed to the next step.
+                </p>
+              </div>
+            )}
+
+            {deleteAllConfirmStep === 2 && (
+              <div className="space-y-4">
+                <p className="text-slate-300">
+                  This will delete all your API keys permanently from both local
+                  storage and Puter KV Store.
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-sm text-red-400 font-medium">
+                    🔴 Make sure you have backed up your keys before proceeding.
+                  </p>
+                </div>
+                <p className="text-slate-400 text-sm">
+                  Click "I Understand" to proceed to final confirmation.
+                </p>
+              </div>
+            )}
+
+            {deleteAllConfirmStep === 3 && (
+              <div className="space-y-4">
+                <p className="text-slate-300">
+                  This is your final confirmation. Clicking "Delete All" will
+                  permanently remove all API keys.
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-sm text-red-400 font-medium">
+                    ❌ This is your last chance to cancel.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={resetDeleteConfirmation}
+              variant="outline"
+              className="text-white border-slate-700 hover:bg-slate-800"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+
+            {deleteAllConfirmStep < 3 && (
+              <Button
+                onClick={() =>
+                  setDeleteAllConfirmStep((step) => (step + 1) as 1 | 2 | 3)
+                }
+                className="bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white border-0"
+              >
+                {deleteAllConfirmStep === 1 ? "Continue" : "I Understand"}
+              </Button>
+            )}
+
+            {deleteAllConfirmStep === 3 && (
+              <Button
+                onClick={handleDeleteAllKeys}
+                disabled={deleteAllLoading}
+                className="bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleteAllLoading ? (
+                  <>
+                    <span className="animate-spin inline-block mr-2">⏳</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete All
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
