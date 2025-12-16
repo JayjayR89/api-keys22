@@ -348,7 +348,10 @@ export default function ApiKeyManager() {
         );
       }
 
+      console.log("[KV Fetch] Attempting to fetch keys from KV store");
       const data = await puter.kv.get("api_keys");
+      console.log("[KV Fetch] Get result:", data);
+
       if (!data) {
         throw new Error(
           "No saved keys found in Puter KV Store. Try saving your keys first.",
@@ -358,6 +361,7 @@ export default function ApiKeyManager() {
       let fetchedKeys: ApiKey[] = [];
       try {
         fetchedKeys = JSON.parse(data);
+        console.log("[KV Fetch] Parsed keys:", fetchedKeys.length, "keys");
       } catch (parseErr) {
         console.error("Error parsing KV data:", data);
         throw new Error(
@@ -417,6 +421,7 @@ export default function ApiKeyManager() {
       }
     } catch (err) {
       const errorMsg = (err as Error).message;
+      console.error("[KV Fetch] Error:", errorMsg);
       setFetchFromKvMessage({
         type: "error",
         text: `Failed to fetch from KV: ${errorMsg}`,
