@@ -324,8 +324,15 @@ export default function ApiKeyManager() {
         );
       }
 
-      const dataToSave = JSON.stringify(keys, null, 2);
-      console.log("[KV Save] Attempting to save keys:", keys.length, "keys");
+      // Save as compact JSON (no pretty-printing) to stay under 400KB limit
+      const dataToSave = JSON.stringify(keys);
+      const sizeInKB = new Blob([dataToSave]).size / 1024;
+      console.log("[KV Save] Attempting to save", keys.length, "keys (~" + sizeInKB.toFixed(2) + " KB)");
+
+      if (sizeInKB > 400) {
+        throw new Error(`Data too large for KV store: ${sizeInKB.toFixed(2)} KB (max 400 KB)`);
+      }
+
       const result = await puter.kv.set("api_keys", dataToSave);
       console.log("[KV Save] Set result:", result);
 
