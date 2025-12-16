@@ -298,7 +298,9 @@ export default function ApiKeyManager() {
     try {
       const puter = (window as any).puter;
       if (!puter || !puter.kv) {
-        throw new Error("Puter KV not available. Please ensure Puter is initialized.");
+        throw new Error(
+          "Puter KV not available. Please ensure Puter is initialized.",
+        );
       }
 
       // Check if user is authenticated
@@ -320,7 +322,9 @@ export default function ApiKeyManager() {
         fetchedKeys = JSON.parse(data);
       } catch (parseErr) {
         console.error("Error parsing KV data:", data);
-        throw new Error("Invalid JSON format in KV Store. Data may be corrupted.");
+        throw new Error(
+          "Invalid JSON format in KV Store. Data may be corrupted.",
+        );
       }
 
       if (!Array.isArray(fetchedKeys)) {
