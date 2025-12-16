@@ -83,6 +83,7 @@ export default function ApiKeyManager() {
   const [usernameFilterOpen, setUsernameFilterOpen] = useState(false);
   const [providerFilter, setProviderFilter] = useState("");
   const [usernameFilter, setUsernameFilter] = useState("");
+  const [kvKeyCount, setKvKeyCount] = useState<number | null>(null);
 
   // Check Puter auth status on mount
   useEffect(() => {
@@ -99,6 +100,35 @@ export default function ApiKeyManager() {
     };
     checkPuterAuth();
   }, []);
+
+  // Fetch KV key count
+  const fetchKvKeyCount = async () => {
+    try {
+      const puter = (window as any).puter;
+      if (!puter || !puter.kv) {
+        setKvKeyCount(null);
+        return;
+      }
+
+      if (!puterUser) {
+        setKvKeyCount(null);
+        return;
+      }
+
+      const keys = await puter.kv.list();
+      setKvKeyCount(Array.isArray(keys) ? keys.length : 0);
+    } catch (err) {
+      console.error("Error fetching KV key count:", err);
+      setKvKeyCount(null);
+    }
+  };
+
+  // Fetch KV key count when settings modal opens or user changes
+  useEffect(() => {
+    if (showSettingsModal && puterUser) {
+      fetchKvKeyCount();
+    }
+  }, [showSettingsModal, puterUser]);
 
   const handlePuterSignIn = async () => {
     try {
