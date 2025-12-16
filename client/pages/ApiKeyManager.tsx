@@ -69,6 +69,11 @@ export default function ApiKeyManager() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [deleteAllConfirmStep, setDeleteAllConfirmStep] = useState<1 | 2 | 3>(
+    1,
+  );
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [puterUser, setPuterUser] = useState<{ username?: string } | null>(
     null,
