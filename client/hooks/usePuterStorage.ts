@@ -61,9 +61,9 @@ export const usePuterStorage = () => {
   // Save keys to puter storage
   const saveKeys = useCallback(async (newKeys: ApiKey[]) => {
     try {
-      const puter = (window as any).puter;
-      if (!puter) {
-        throw new Error("Puter not initialized");
+      const puter = await waitForPuter();
+      if (!puter || !puter.kv) {
+        throw new Error("Puter KV not available");
       }
 
       await puter.kv.set(STORAGE_KEY, JSON.stringify(newKeys));
