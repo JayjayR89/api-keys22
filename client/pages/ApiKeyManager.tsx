@@ -302,7 +302,13 @@ export default function ApiKeyManager() {
       }
 
       const dataToSave = JSON.stringify(keys, null, 2);
-      await puter.kv.set("api_keys", dataToSave);
+      console.log("[KV Save] Attempting to save keys:", keys.length, "keys");
+      const result = await puter.kv.set("api_keys", dataToSave);
+      console.log("[KV Save] Set result:", result);
+
+      if (!result) {
+        throw new Error("Failed to save to KV store (returned false)");
+      }
 
       setSaveToKvMessage({
         type: "success",
@@ -312,6 +318,7 @@ export default function ApiKeyManager() {
       await fetchKvKeyCount();
     } catch (err) {
       const errorMsg = (err as Error).message;
+      console.error("[KV Save] Error:", errorMsg);
       setSaveToKvMessage({
         type: "error",
         text: `Failed to save to KV: ${errorMsg}`,
