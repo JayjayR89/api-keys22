@@ -78,6 +78,11 @@ export default function ApiKeyManager() {
   const [puterUser, setPuterUser] = useState<{ username?: string } | null>(
     null,
   );
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [providerFilterOpen, setProviderFilterOpen] = useState(false);
+  const [usernameFilterOpen, setUsernameFilterOpen] = useState(false);
+  const [providerFilter, setProviderFilter] = useState("");
+  const [usernameFilter, setUsernameFilter] = useState("");
 
   // Check Puter auth status on mount
   useEffect(() => {
