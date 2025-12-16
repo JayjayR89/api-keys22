@@ -309,6 +309,7 @@ export default function ApiKeyManager() {
         text: `Successfully saved ${keys.length} API keys to Puter KV Store`,
       });
       toast.success("Keys saved to Puter KV Store");
+      await fetchKvKeyCount();
     } catch (err) {
       const errorMsg = (err as Error).message;
       setSaveToKvMessage({
