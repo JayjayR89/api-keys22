@@ -380,6 +380,26 @@ export default function ApiKeyManager() {
     setDeleteAllConfirmStep(1);
   };
 
+  // Get unique providers for autocomplete
+  const uniqueProviders = useMemo(() => {
+    const providers = new Set(keys.map((k) => k.label));
+    return Array.from(providers)
+      .sort()
+      .filter((p) =>
+        p.toLowerCase().includes((providerFilter || provider).toLowerCase()),
+      );
+  }, [keys, providerFilter, provider]);
+
+  // Get unique usernames for autocomplete
+  const uniqueUsernames = useMemo(() => {
+    const usernames = new Set(keys.map((k) => k.username));
+    return Array.from(usernames)
+      .sort()
+      .filter((u) =>
+        u.toLowerCase().includes((usernameFilter || username).toLowerCase()),
+      );
+  }, [keys, usernameFilter, username]);
+
   // Group keys by provider, then by username
   const groupedKeys = useMemo(() => {
     const groups = new Map<string, Map<string, ApiKey[]>>();
