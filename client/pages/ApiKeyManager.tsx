@@ -354,7 +354,7 @@ export default function ApiKeyManager() {
 
       console.log("[KV Fetch] Attempting to fetch keys from KV store");
       const data = await puter.kv.get("api_keys");
-      console.log("[KV Fetch] Get result:", data);
+      console.log("[KV Fetch] Get result:", data, "type:", typeof data);
 
       if (!data) {
         throw new Error(
@@ -370,16 +370,27 @@ export default function ApiKeyManager() {
           fetchedKeys = JSON.parse(data);
           console.log("[KV Fetch] Parsed keys from string:", fetchedKeys.length, "keys");
         } catch (parseErr) {
-          console.error("Error parsing KV data:", data);
+          console.error("[KV Fetch] Error parsing KV data:", data);
           throw new Error(
             "Invalid JSON format in KV Store. Data may be corrupted.",
           );
         }
       } else if (Array.isArray(data)) {
         fetchedKeys = data;
-        console.log("[KV Fetch] Retrieved keys directly:", fetchedKeys.length, "keys");
+        console.log("[KV Fetch] Retrieved keys directly as array:", fetchedKeys.length, "keys");
+      } else if (typeof data === "object" && data !== null) {
+        // Maybe Puter returned an object that needs to be converted
+        try {
+          fetchedKeys = JSON.parse(JSON.stringify(data));
+          console.log("[KV Fetch] Converted object to array:", fetchedKeys.length, "keys");
+        } catch (err) {
+          console.error("[KV Fetch] Cannot convert object:", data);
+          throw new Error(
+            "Invalid data format in KV Store. Could not convert to array.",
+          );
+        }
       } else {
-        console.error("Unexpected data type from KV:", typeof data, data);
+        console.error("[KV Fetch] Unexpected data type from KV:", typeof data, data);
         throw new Error(
           "Invalid data format in KV Store. Expected array or JSON string.",
         );
