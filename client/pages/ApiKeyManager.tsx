@@ -1054,6 +1054,14 @@ export default function ApiKeyManager() {
               )}
 
               <div className="mt-4 pt-4 border-t border-slate-700">
+                <div className="mb-3 p-3 bg-slate-800/50 border border-slate-600 rounded-lg">
+                  <p className="text-xs text-slate-400 mb-1">KV Store Keys</p>
+                  <p className="text-lg font-semibold text-white">
+                    {kvKeyCount === null
+                      ? "Loading..."
+                      : `${kvKeyCount} key${kvKeyCount !== 1 ? "s" : ""}`}
+                  </p>
+                </div>
                 <Button
                   onClick={handleFetchFromKV}
                   disabled={fetchFromKvLoading}
