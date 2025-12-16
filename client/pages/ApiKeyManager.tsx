@@ -403,6 +403,7 @@ export default function ApiKeyManager() {
           text: `Successfully fetched and added ${addedCount} API key(s) from Puter KV Store`,
         });
         toast.success(`Fetched ${addedCount} keys from KV Store`);
+        await fetchKvKeyCount();
       } else {
         throw new Error("Failed to add keys from KV Store");
       }
