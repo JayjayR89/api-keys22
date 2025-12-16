@@ -39,6 +39,7 @@ export default function ApiKeyManager() {
     addKey,
     updateKey,
     deleteKey,
+    deleteAllKeys,
     exportKeys,
     importKeys,
     setError,
