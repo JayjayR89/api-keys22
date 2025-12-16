@@ -106,19 +106,23 @@ export default function ApiKeyManager() {
     try {
       const puter = (window as any).puter;
       if (!puter || !puter.kv) {
+        console.log("[KV Count] Puter KV not available");
         setKvKeyCount(null);
         return;
       }
 
       if (!puterUser) {
+        console.log("[KV Count] No Puter user authenticated");
         setKvKeyCount(null);
         return;
       }
 
-      const keys = await puter.kv.list();
-      setKvKeyCount(Array.isArray(keys) ? keys.length : 0);
+      console.log("[KV Count] Fetching KV keys list");
+      const kvKeys = await puter.kv.list();
+      console.log("[KV Count] KV list result:", kvKeys);
+      setKvKeyCount(Array.isArray(kvKeys) ? kvKeys.length : 0);
     } catch (err) {
-      console.error("Error fetching KV key count:", err);
+      console.error("[KV Count] Error fetching KV key count:", err);
       setKvKeyCount(null);
     }
   };
