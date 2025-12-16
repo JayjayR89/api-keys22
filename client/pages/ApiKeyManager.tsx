@@ -39,6 +39,7 @@ export default function ApiKeyManager() {
     addKey,
     updateKey,
     deleteKey,
+    deleteAllKeys,
     exportKeys,
     importKeys,
     setError,
@@ -68,10 +69,20 @@ export default function ApiKeyManager() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [deleteAllConfirmStep, setDeleteAllConfirmStep] = useState<1 | 2 | 3>(
+    1,
+  );
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [puterUser, setPuterUser] = useState<{ username?: string } | null>(
     null,
   );
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [providerFilterOpen, setProviderFilterOpen] = useState(false);
+  const [usernameFilterOpen, setUsernameFilterOpen] = useState(false);
+  const [providerFilter, setProviderFilter] = useState("");
+  const [usernameFilter, setUsernameFilter] = useState("");
 
   // Check Puter auth status on mount
   useEffect(() => {
@@ -248,7 +259,16 @@ export default function ApiKeyManager() {
     try {
       const puter = (window as any).puter;
       if (!puter || !puter.kv) {
-        throw new Error("Puter KV not available");
+        throw new Error(
+          "Puter KV not available. Please ensure Puter is initialized.",
+        );
+      }
+
+      // Check if user is authenticated
+      if (!puterUser) {
+        throw new Error(
+          "You must be signed in with Puter to save keys. Please sign in first.",
+        );
       }
 
       const dataToSave = JSON.stringify(keys, null, 2);
@@ -278,21 +298,43 @@ export default function ApiKeyManager() {
     try {
       const puter = (window as any).puter;
       if (!puter || !puter.kv) {
-        throw new Error("Puter KV not available");
+        throw new Error(
+          "Puter KV not available. Please ensure Puter is initialized.",
+        );
+      }
+
+      // Check if user is authenticated
+      if (!puterUser) {
+        throw new Error(
+          "You must be signed in with Puter to fetch keys. Please sign in first.",
+        );
       }
 
       const data = await puter.kv.get("api_keys");
       if (!data) {
-        throw new Error("No saved keys found in Puter KV Store");
+        throw new Error(
+          "No saved keys found in Puter KV Store. Try saving your keys first.",
+        );
       }
 
-      const fetchedKeys: ApiKey[] = JSON.parse(data);
+      let fetchedKeys: ApiKey[] = [];
+      try {
+        fetchedKeys = JSON.parse(data);
+      } catch (parseErr) {
+        console.error("Error parsing KV data:", data);
+        throw new Error(
+          "Invalid JSON format in KV Store. Data may be corrupted.",
+        );
+      }
+
       if (!Array.isArray(fetchedKeys)) {
-        throw new Error("Invalid data format in KV Store");
+        throw new Error(
+          "Invalid data format in KV Store. Expected an array of keys.",
+        );
       }
 
       if (fetchedKeys.length === 0) {
-        throw new Error("No keys found in Puter KV Store");
+        throw new Error("No keys found in Puter KV Store (empty array).");
       }
 
       // Merge with existing keys, avoiding duplicates by provider+username combination
@@ -345,6 +387,49 @@ export default function ApiKeyManager() {
       setFetchFromKvLoading(false);
     }
   };
+
+  const handleDeleteAllKeys = async () => {
+    setDeleteAllLoading(true);
+    try {
+      const success = await deleteAllKeys();
+      if (success) {
+        toast.success("All API keys deleted successfully");
+        setShowDeleteAllConfirm(false);
+        setDeleteAllConfirmStep(1);
+      } else {
+        toast.error("Failed to delete all keys");
+      }
+    } catch (err) {
+      toast.error("Error deleting all keys");
+    } finally {
+      setDeleteAllLoading(false);
+    }
+  };
+
+  const resetDeleteConfirmation = () => {
+    setShowDeleteAllConfirm(false);
+    setDeleteAllConfirmStep(1);
+  };
+
+  // Get unique providers for autocomplete
+  const uniqueProviders = useMemo(() => {
+    const providers = new Set(keys.map((k) => k.label));
+    return Array.from(providers)
+      .sort()
+      .filter((p) =>
+        p.toLowerCase().includes((providerFilter || provider).toLowerCase()),
+      );
+  }, [keys, providerFilter, provider]);
+
+  // Get unique usernames for autocomplete
+  const uniqueUsernames = useMemo(() => {
+    const usernames = new Set(keys.map((k) => k.username));
+    return Array.from(usernames)
+      .sort()
+      .filter((u) =>
+        u.toLowerCase().includes((usernameFilter || username).toLowerCase()),
+      );
+  }, [keys, usernameFilter, username]);
 
   // Group keys by provider, then by username
   const groupedKeys = useMemo(() => {
@@ -467,67 +552,139 @@ export default function ApiKeyManager() {
           </div>
         )}
 
-        {/* Add Form */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-white mb-6">
-            Add New API Key
-          </h2>
+        {/* Add Form - Collapsible */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl mb-8">
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="w-full px-8 py-4 flex items-center justify-between hover:bg-slate-800/70 transition"
+          >
+            <h2 className="text-2xl font-bold text-white">Add New API Key</h2>
+            <ChevronDown
+              className={`w-6 h-6 text-slate-300 transition-transform ${
+                showAddForm ? "rotate-180" : ""
+              }`}
+            />
+          </button>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Provider
-              </label>
-              <Input
-                type="text"
-                placeholder="e.g., OpenAI, Stripe, GitHub"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-              />
-            </div>
+          {showAddForm && (
+            <div className="px-8 py-6 border-t border-slate-700 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Provider
+                </label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="e.g., OpenAI, Stripe, GitHub"
+                    value={provider}
+                    onChange={(e) => {
+                      setProvider(e.target.value);
+                      setProviderFilter(e.target.value);
+                      setProviderFilterOpen(true);
+                    }}
+                    onFocus={() => {
+                      setProviderFilterOpen(true);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setProviderFilterOpen(false), 200);
+                    }}
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                  {providerFilterOpen &&
+                    uniqueProviders.length > 0 &&
+                    uniqueProviders.some((p) => p !== provider) && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg z-50">
+                        {uniqueProviders.map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => {
+                              setProvider(p);
+                              setProviderFilter("");
+                              setProviderFilterOpen(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-600 first:rounded-t-lg last:rounded-b-lg transition"
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Username <span className="text-slate-500">(optional)</span>
-              </label>
-              <Input
-                type="text"
-                placeholder="Account name or email (defaults to MISC if left blank)"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Username <span className="text-slate-500">(optional)</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="Account name or email (defaults to MISC if left blank)"
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      setUsernameFilter(e.target.value);
+                      setUsernameFilterOpen(true);
+                    }}
+                    onFocus={() => {
+                      setUsernameFilterOpen(true);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setUsernameFilterOpen(false), 200);
+                    }}
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                  {usernameFilterOpen &&
+                    uniqueUsernames.length > 0 &&
+                    uniqueUsernames.some((u) => u !== username) && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg z-50">
+                        {uniqueUsernames.map((u) => (
+                          <button
+                            key={u}
+                            onClick={() => {
+                              setUsername(u);
+                              setUsernameFilter("");
+                              setUsernameFilterOpen(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-600 first:rounded-t-lg last:rounded-b-lg transition"
+                          >
+                            {u}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                API Key
-              </label>
-              <Input
-                type="password"
-                placeholder="Paste your API key here"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  API Key
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Paste your API key here"
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                />
+              </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button
-                onClick={handleAddOrUpdate}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Key
-              </Button>
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleAddOrUpdate}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Key
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Import/Export Actions */}
         <div className="mb-8">
-          <div className="flex gap-3 mb-3">
+          <div className="flex justify-center gap-3 mb-3">
             <Button
               onClick={handleExport}
               className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white border-0"
@@ -553,7 +710,7 @@ export default function ApiKeyManager() {
             />
           </div>
 
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 text-center">
             💡 Supports JSON format or text files with PROVIDER=...,
             USERNAME=..., KEY=... format
           </p>
@@ -885,6 +1042,28 @@ export default function ApiKeyManager() {
                   {fetchFromKvMessage.text}
                 </div>
               )}
+
+              <div className="mt-6 pt-6 border-t border-slate-700">
+                <h3 className="text-sm font-semibold text-slate-200 mb-3">
+                  Danger Zone
+                </h3>
+                <Button
+                  onClick={() => {
+                    setShowDeleteAllConfirm(true);
+                    setDeleteAllConfirmStep(1);
+                  }}
+                  disabled={keys.length === 0}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete All Keys
+                </Button>
+                {keys.length === 0 && (
+                  <p className="text-xs text-slate-500 mt-2">
+                    No keys to delete.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -895,6 +1074,120 @@ export default function ApiKeyManager() {
             >
               Close
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Keys Confirmation Dialog */}
+      <Dialog
+        open={showDeleteAllConfirm}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetDeleteConfirmation();
+          }
+        }}
+      >
+        <DialogContent className="bg-slate-800 border border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {deleteAllConfirmStep === 1
+                ? "Delete All API Keys?"
+                : deleteAllConfirmStep === 2
+                  ? "Are You Sure?"
+                  : "Final Confirmation"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4">
+            {deleteAllConfirmStep === 1 && (
+              <div className="space-y-4">
+                <p className="text-slate-300">
+                  You are about to permanently delete all {keys.length} API key
+                  {keys.length !== 1 ? "s" : ""} from your account.
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-sm text-red-400 font-medium">
+                    ⚠️ This action cannot be undone.
+                  </p>
+                </div>
+                <p className="text-slate-400 text-sm">
+                  Click "Continue" if you want to proceed to the next step.
+                </p>
+              </div>
+            )}
+
+            {deleteAllConfirmStep === 2 && (
+              <div className="space-y-4">
+                <p className="text-slate-300">
+                  This will delete all your API keys permanently from both local
+                  storage and Puter KV Store.
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-sm text-red-400 font-medium">
+                    🔴 Make sure you have backed up your keys before proceeding.
+                  </p>
+                </div>
+                <p className="text-slate-400 text-sm">
+                  Click "I Understand" to proceed to final confirmation.
+                </p>
+              </div>
+            )}
+
+            {deleteAllConfirmStep === 3 && (
+              <div className="space-y-4">
+                <p className="text-slate-300">
+                  This is your final confirmation. Clicking "Delete All" will
+                  permanently remove all API keys.
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-sm text-red-400 font-medium">
+                    ❌ This is your last chance to cancel.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={resetDeleteConfirmation}
+              variant="outline"
+              className="text-white border-slate-700 hover:bg-slate-800"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+
+            {deleteAllConfirmStep < 3 && (
+              <Button
+                onClick={() =>
+                  setDeleteAllConfirmStep((step) => (step + 1) as 1 | 2 | 3)
+                }
+                className="bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white border-0"
+              >
+                {deleteAllConfirmStep === 1 ? "Continue" : "I Understand"}
+              </Button>
+            )}
+
+            {deleteAllConfirmStep === 3 && (
+              <Button
+                onClick={handleDeleteAllKeys}
+                disabled={deleteAllLoading}
+                className="bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleteAllLoading ? (
+                  <>
+                    <span className="animate-spin inline-block mr-2">⏳</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete All
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

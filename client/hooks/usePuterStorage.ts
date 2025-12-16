@@ -10,6 +10,19 @@ export interface ApiKey {
 
 const STORAGE_KEY = "api_keys";
 
+// Helper to wait for Puter to be initialized
+const waitForPuter = async (maxWaitTime: number = 5000): Promise<any> => {
+  const startTime = Date.now();
+  while (Date.now() - startTime < maxWaitTime) {
+    const puter = (window as any).puter;
+    if (puter && puter.kv) {
+      return puter;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("Puter KV not initialized after timeout");
+};
+
 export const usePuterStorage = () => {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -19,19 +32,25 @@ export const usePuterStorage = () => {
   useEffect(() => {
     const loadKeys = async () => {
       try {
-        const puter = (window as any).puter;
-        if (!puter) {
-          throw new Error("Puter not initialized");
+        const puter = await waitForPuter();
+        if (!puter || !puter.kv) {
+          console.warn("Puter KV not available, starting with empty keys");
+          setIsLoaded(true);
+          return;
         }
 
         const data = await puter.kv.get(STORAGE_KEY);
         if (data) {
-          setKeys(JSON.parse(data));
+          try {
+            setKeys(JSON.parse(data));
+          } catch (parseErr) {
+            console.error("Failed to parse stored keys:", parseErr);
+            setError("Corrupted data in storage, starting fresh");
+          }
         }
         setIsLoaded(true);
       } catch (err) {
-        console.error("Failed to load keys from puter storage:", err);
-        setError((err as Error).message);
+        console.warn("Failed to load keys from puter storage:", err);
         setIsLoaded(true);
       }
     };
@@ -42,9 +61,9 @@ export const usePuterStorage = () => {
   // Save keys to puter storage
   const saveKeys = useCallback(async (newKeys: ApiKey[]) => {
     try {
-      const puter = (window as any).puter;
-      if (!puter) {
-        throw new Error("Puter not initialized");
+      const puter = await waitForPuter();
+      if (!puter || !puter.kv) {
+        throw new Error("Puter KV not available");
       }
 
       await puter.kv.set(STORAGE_KEY, JSON.stringify(newKeys));
@@ -244,6 +263,10 @@ export const usePuterStorage = () => {
     [keys, saveKeys],
   );
 
+  const deleteAllKeys = useCallback(async () => {
+    return saveKeys([]);
+  }, [saveKeys]);
+
   return {
     keys,
     isLoaded,
@@ -251,6 +274,7 @@ export const usePuterStorage = () => {
     addKey,
     updateKey,
     deleteKey,
+    deleteAllKeys,
     exportKeys,
     importKeys,
     setError,
