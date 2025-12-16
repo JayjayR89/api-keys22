@@ -352,6 +352,29 @@ export default function ApiKeyManager() {
     }
   };
 
+  const handleDeleteAllKeys = async () => {
+    setDeleteAllLoading(true);
+    try {
+      const success = await deleteAllKeys();
+      if (success) {
+        toast.success("All API keys deleted successfully");
+        setShowDeleteAllConfirm(false);
+        setDeleteAllConfirmStep(1);
+      } else {
+        toast.error("Failed to delete all keys");
+      }
+    } catch (err) {
+      toast.error("Error deleting all keys");
+    } finally {
+      setDeleteAllLoading(false);
+    }
+  };
+
+  const resetDeleteConfirmation = () => {
+    setShowDeleteAllConfirm(false);
+    setDeleteAllConfirmStep(1);
+  };
+
   // Group keys by provider, then by username
   const groupedKeys = useMemo(() => {
     const groups = new Map<string, Map<string, ApiKey[]>>();
