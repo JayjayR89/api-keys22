@@ -289,21 +289,39 @@ export default function ApiKeyManager() {
     try {
       const puter = (window as any).puter;
       if (!puter || !puter.kv) {
-        throw new Error("Puter KV not available");
+        throw new Error("Puter KV not available. Please ensure Puter is initialized.");
+      }
+
+      // Check if user is authenticated
+      if (!puterUser) {
+        throw new Error(
+          "You must be signed in with Puter to fetch keys. Please sign in first.",
+        );
       }
 
       const data = await puter.kv.get("api_keys");
       if (!data) {
-        throw new Error("No saved keys found in Puter KV Store");
+        throw new Error(
+          "No saved keys found in Puter KV Store. Try saving your keys first.",
+        );
       }
 
-      const fetchedKeys: ApiKey[] = JSON.parse(data);
+      let fetchedKeys: ApiKey[] = [];
+      try {
+        fetchedKeys = JSON.parse(data);
+      } catch (parseErr) {
+        console.error("Error parsing KV data:", data);
+        throw new Error("Invalid JSON format in KV Store. Data may be corrupted.");
+      }
+
       if (!Array.isArray(fetchedKeys)) {
-        throw new Error("Invalid data format in KV Store");
+        throw new Error(
+          "Invalid data format in KV Store. Expected an array of keys.",
+        );
       }
 
       if (fetchedKeys.length === 0) {
-        throw new Error("No keys found in Puter KV Store");
+        throw new Error("No keys found in Puter KV Store (empty array).");
       }
 
       // Merge with existing keys, avoiding duplicates by provider+username combination
