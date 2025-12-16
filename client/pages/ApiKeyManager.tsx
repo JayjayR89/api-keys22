@@ -521,62 +521,134 @@ export default function ApiKeyManager() {
           </div>
         )}
 
-        {/* Add Form */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-white mb-6">
-            Add New API Key
-          </h2>
+        {/* Add Form - Collapsible */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl mb-8">
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="w-full px-8 py-4 flex items-center justify-between hover:bg-slate-800/70 transition"
+          >
+            <h2 className="text-2xl font-bold text-white">Add New API Key</h2>
+            <ChevronDown
+              className={`w-6 h-6 text-slate-300 transition-transform ${
+                showAddForm ? "rotate-180" : ""
+              }`}
+            />
+          </button>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Provider
-              </label>
-              <Input
-                type="text"
-                placeholder="e.g., OpenAI, Stripe, GitHub"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-              />
-            </div>
+          {showAddForm && (
+            <div className="px-8 py-6 border-t border-slate-700 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Provider
+                </label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="e.g., OpenAI, Stripe, GitHub"
+                    value={provider}
+                    onChange={(e) => {
+                      setProvider(e.target.value);
+                      setProviderFilter(e.target.value);
+                      setProviderFilterOpen(true);
+                    }}
+                    onFocus={() => {
+                      setProviderFilterOpen(true);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setProviderFilterOpen(false), 200);
+                    }}
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                  {providerFilterOpen &&
+                    uniqueProviders.length > 0 &&
+                    uniqueProviders.some((p) => p !== provider) && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg z-50">
+                        {uniqueProviders.map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => {
+                              setProvider(p);
+                              setProviderFilter("");
+                              setProviderFilterOpen(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-600 first:rounded-t-lg last:rounded-b-lg transition"
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Username <span className="text-slate-500">(optional)</span>
-              </label>
-              <Input
-                type="text"
-                placeholder="Account name or email (defaults to MISC if left blank)"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Username <span className="text-slate-500">(optional)</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="Account name or email (defaults to MISC if left blank)"
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      setUsernameFilter(e.target.value);
+                      setUsernameFilterOpen(true);
+                    }}
+                    onFocus={() => {
+                      setUsernameFilterOpen(true);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setUsernameFilterOpen(false), 200);
+                    }}
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                  {usernameFilterOpen &&
+                    uniqueUsernames.length > 0 &&
+                    uniqueUsernames.some((u) => u !== username) && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg z-50">
+                        {uniqueUsernames.map((u) => (
+                          <button
+                            key={u}
+                            onClick={() => {
+                              setUsername(u);
+                              setUsernameFilter("");
+                              setUsernameFilterOpen(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-600 first:rounded-t-lg last:rounded-b-lg transition"
+                          >
+                            {u}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                API Key
-              </label>
-              <Input
-                type="password"
-                placeholder="Paste your API key here"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  API Key
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Paste your API key here"
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
+                />
+              </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button
-                onClick={handleAddOrUpdate}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Key
-              </Button>
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleAddOrUpdate}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Key
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Import/Export Actions */}
