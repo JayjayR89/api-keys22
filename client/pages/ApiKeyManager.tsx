@@ -101,7 +101,7 @@ export default function ApiKeyManager() {
     checkPuterAuth();
   }, []);
 
-  // Fetch KV key count
+  // Fetch KV key count - shows number of API keys stored in KV
   const fetchKvKeyCount = async () => {
     try {
       const puter = (window as any).puter;
@@ -117,12 +117,31 @@ export default function ApiKeyManager() {
         return;
       }
 
-      console.log("[KV Count] Fetching KV keys list");
-      const kvKeys = await puter.kv.list();
-      console.log("[KV Count] KV list result:", kvKeys);
-      setKvKeyCount(Array.isArray(kvKeys) ? kvKeys.length : 0);
+      console.log("[KV Count] Fetching API keys from KV store");
+      const data = await puter.kv.get("api_keys");
+      console.log("[KV Count] KV get result:", data);
+
+      if (!data) {
+        setKvKeyCount(0);
+        return;
+      }
+
+      let count = 0;
+      try {
+        if (typeof data === "string") {
+          const parsed = JSON.parse(data);
+          count = Array.isArray(parsed) ? parsed.length : 0;
+        } else if (Array.isArray(data)) {
+          count = data.length;
+        }
+        console.log("[KV Count] Found", count, "API keys in KV store");
+        setKvKeyCount(count);
+      } catch (err) {
+        console.error("[KV Count] Error parsing KV data:", err);
+        setKvKeyCount(null);
+      }
     } catch (err) {
-      console.error("[KV Count] Error fetching KV key count:", err);
+      console.error("[KV Count] Error fetching KV data:", err);
       setKvKeyCount(null);
     }
   };
