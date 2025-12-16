@@ -442,18 +442,17 @@ export default function ApiKeyManager() {
         return;
       }
 
-      // Add each new key
-      let addedCount = 0;
-      for (const keyToAdd of newKeysToAdd) {
-        const success = await addKey(
-          keyToAdd.label,
-          keyToAdd.username,
-          keyToAdd.key,
-        );
-        if (success) {
-          addedCount++;
-        }
-      }
+      // Add all new keys at once instead of one-by-one for better performance
+      console.log("[KV Fetch] Adding", newKeysToAdd.length, "new keys");
+
+      const addPromises = newKeysToAdd.map((keyToAdd) =>
+        addKey(keyToAdd.label, keyToAdd.username, keyToAdd.key)
+      );
+
+      const results = await Promise.allSettled(addPromises);
+      const addedCount = results.filter((r) => r.status === "fulfilled" && r.value === true).length;
+
+      console.log("[KV Fetch] Successfully added", addedCount, "out of", newKeysToAdd.length, "keys");
 
       if (addedCount > 0) {
         setFetchFromKvMessage({
@@ -463,7 +462,7 @@ export default function ApiKeyManager() {
         toast.success(`Fetched ${addedCount} keys from KV Store`);
         await fetchKvKeyCount();
       } else {
-        throw new Error("Failed to add keys from KV Store");
+        throw new Error(`Failed to add keys from KV Store (0/${newKeysToAdd.length} succeeded)`);
       }
     } catch (err) {
       const errorMsg = (err as Error).message;
