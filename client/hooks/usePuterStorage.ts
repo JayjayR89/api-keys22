@@ -263,6 +263,10 @@ export const usePuterStorage = () => {
     [keys, saveKeys],
   );
 
+  const deleteAllKeys = useCallback(async () => {
+    return saveKeys([]);
+  }, [saveKeys]);
+
   return {
     keys,
     isLoaded,
@@ -270,6 +274,7 @@ export const usePuterStorage = () => {
     addKey,
     updateKey,
     deleteKey,
+    deleteAllKeys,
     exportKeys,
     importKeys,
     setError,
